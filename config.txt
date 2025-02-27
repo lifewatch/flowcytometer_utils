@@ -1,0 +1,4 @@
+#Directory containing the samples to be converted
+directory_path=\\location\data_simonstevin\cyto\deployment
+#Path containing the program cyz2json
+dotnet_program_path=C:\Users\Public\cyz2json\bin\Cyz2Json.dll
