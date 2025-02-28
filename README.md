@@ -12,9 +12,8 @@ Finally, the data publishing (**#9**) step involves exporting fully labeled imag
 
 # Code Flow
 
-## Sample collection & processing  
-This wet lab step is excluded to create the .CYZ file (**#1**)
-
+## Input Code  
+The Flow tarts with sample collection and processing (**#1**), where Cytosense generates .cyz files containing plankton images, fluorescence/scatter data, and instrument metadata
 ## step 1: Image extraction and reformatting (1)
 
 The [cyz2json\cyz2json_python](cyz2json\cyz2json_python) folder of this repository contains code to process the output of the flowcytometer into an acceptable format. Two steps are required in this process:  
@@ -34,3 +33,6 @@ The script [create_tsv_file_metrics.py](csv2ecotaxa/create_tsv_file_metrics.py) 
 The previous script ([create_tsv_file_metrics.py](csv2ecotaxa/create_tsv_file_metrics.py)) also merges all the metadata (from sampling or added along the way) together in a .tsv file and zips it together with the images to match with an EcoTaxa upload (**#5**  & **#6**)
 
 The script can be found in the [csv2ecotaxa](csv2ecotaxa) folder. 
+
+## output Code
+From this point the remaining steps from **Figure 1** can can be executed. 
