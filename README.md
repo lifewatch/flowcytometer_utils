@@ -10,6 +10,11 @@ Finally, the data publishing (**#9**) step involves exporting fully labeled imag
 ![Flowchart](flowchart.png)  
 
 
+# Instal
+
+please use python 3.11.
+
+
 # Code Flow
 
 ## Input Code  
