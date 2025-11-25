@@ -25,6 +25,11 @@ The `cyz2json` program is required for conversion and can be found at [OBAMANEXT
 
    ```sh
    git clone https://github.com/OBAMANEXT/cyz2json.git
+   # Fetch all remote branches and commits
+   git fetch origin
+
+   # Checkout the commit you want
+   git checkout d9d7d70b7af3e152648e59d0a92f457ca17753a2
    ```
 
 2. Navigate to the cloned repository:
