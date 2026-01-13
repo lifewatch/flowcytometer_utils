@@ -13,15 +13,11 @@ directories = [
 
 # List of directories to be analyzed
 directories = [
-    r'\\fs\SHARED\onderzoek\6. Marine Observation Center\Instruments\Plankton\FytoPlankton\CytoBuoy\Obsea_downloadsIFCS\2025_02\19'
+    r'\Obsea_downloadsIFCS\2025_02\19'
 ]
 
-# directories = [
-#     r'\\fs\SHARED\onderzoek\6. Marine Observation Center\Instruments\Plankton\FytoPlankton\CytoBuoy\TestFiles'
-# ]
 # Path to config file
-# config_file_path = pathlib.Path(r"flowcytometer_utils\cyz2json\cyz2json_python\config.txt") # be carefull if you have raw .cyz files in your directory you need to skip these!
-config_file_path = pathlib.Path(r"C:\Users\wout.decrop\Documents\environments\flowcytometer_utils_public\flowcytometer_utils\config.txt") # be carefull if you have raw .cyz files in your directory you need to skip these!
+config_file_path = pathlib.Path(r"\flowcytometer_utils\config.txt") # be carefull if you have raw .cyz files in your directory you need to skip these!
 
 
 # Path to python script to be used
@@ -64,7 +60,7 @@ for directory in directories:
     # print(result_conversion.stdout)
 
     # Run the convertion script
-    # result_conversion = subprocess.run(['python', script_path_conversion], check=True, capture_output=True, text=True)
+    result_conversion = subprocess.run(['python', script_path_conversion], check=True, capture_output=True, text=True)
     print("run extraction :",script_path_extraction)
     # Run the extracting script
         # Run it using the correct Python
@@ -75,7 +71,7 @@ for directory in directories:
         text=True
     )
 
-    # result_extraction = subprocess.run(['python', script_path_extraction], check=True, capture_output=True, text=True)
+    result_extraction = subprocess.run(['python', script_path_extraction], check=True, capture_output=True, text=True)
 
     # Print the output of the script
     print(f"Output for directory {directory}:")

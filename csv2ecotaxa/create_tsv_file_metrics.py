@@ -12,7 +12,7 @@ import pathlib
 # Define the base with cyz files (we need their name to find the csv files)
 base_path1 = r"location\to\folder"
 
-base_path1 = pathlib.Path(r"\\fs\SHARED\onderzoek\6. Marine Observation Center\Instruments\Plankton\FytoPlankton\CytoBuoy\Obsea_downloadsIFCS\2025_02\19") # be carefull if you have raw .cyz files in your directory you need to skip these!
+base_path1 = pathlib.Path(r"\CytoBuoy\Obsea_downloadsIFCS\2025_02\19") # be carefull if you have raw .cyz files in your directory you need to skip these!
 import os
 import pandas as pd
 import zipfile
@@ -248,8 +248,6 @@ zip_file_path = rf"{base_path1}\output_to_ecotaxa"
 
 os.makedirs(zip_file_path, exist_ok=True)
 
-# Define the base path
-# base_path1 = r"\\qarchive\data_simonstevin\cyto\ANERIS\LW\04_2023"
 
 # Get all .cyz files in the folder
 cyz_files = [f for f in os.listdir(base_path1) if f.endswith('.cyz.json')]
@@ -353,7 +351,7 @@ for cyz_file in cyz_files:
 
     # Get all image files from the folder (assuming the images have a .jpg, .png, etc. extension)
     image_files = [f for f in os.listdir(image_folder) if f.lower().endswith(('jpg', 'jpeg', 'png', 'gif'))]
-    sample_processing_data_total_with_type.to_csv(rf"\\qarchive\data_simonstevin\cyto\ANERIS\LW\04_2023_output.csv", index=False)
+    sample_processing_data_total_with_type.to_csv(rf"ANERIS\LW\04_2023_output.csv", index=False)
 
     # Create a new directory to temporarily hold the files to be zipped
     temp_dir = rf"{base_path1}\TEMP_ZIP"

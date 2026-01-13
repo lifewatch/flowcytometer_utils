@@ -1,4 +1,4 @@
 #Directory containing the samples to be converted
-directory_path=C:\Users\wout.decrop\Documents\environments\flowcytometer_utils_public\data\STATION
+directory_path=\\location\data_simonstevin\cyto\deployment
 #Path containing the program cyz2json
-dotnet_program_path=C:\Users\wout.decrop\Documents\environments\flowcytometer_utils_public\cyz2json\Cyz2Json\bin\Cyz2Json.dll
+dotnet_program_path=C:\Users\Public\cyz2json\bin\Cyz2Json.dll
