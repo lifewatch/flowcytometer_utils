@@ -5,7 +5,7 @@ import os
 
 # Read the paths from the config file
 config = {}
-with open(r'C:\Users\wout.decrop\environments\Imagine\flowcytometer\flowcytometer_utils\cyz2json\cyz2json_python\config.txt', 'r') as file:
+with open(r'C:\Users\wout.decrop\Documents\environments\flowcytometer_utils_public\flowcytometer_utils\config.txt', 'r') as file:
     for line in file:
         # Skip empty lines and comments
         if line.strip() == '' or line.strip().startswith('#'):

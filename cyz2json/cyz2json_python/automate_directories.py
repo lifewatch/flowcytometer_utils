@@ -1,7 +1,7 @@
 import subprocess
 import os
 import pathlib
-
+import sys
 # List of directories to be analyzed
 directories = [
 
@@ -13,11 +13,16 @@ directories = [
 
 # List of directories to be analyzed
 directories = [
-    r'FCM data\Datafiles\Jens\testing'
+    r'\\fs\SHARED\onderzoek\6. Marine Observation Center\Instruments\Plankton\FytoPlankton\CytoBuoy\Obsea_downloadsIFCS\2025_02\19'
 ]
 
+# directories = [
+#     r'\\fs\SHARED\onderzoek\6. Marine Observation Center\Instruments\Plankton\FytoPlankton\CytoBuoy\TestFiles'
+# ]
 # Path to config file
-config_file_path = pathlib.Path(r"flowcytometer_utils\cyz2json\cyz2json_python\config.txt") # be carefull if you have raw .cyz files in your directory you need to skip these!
+# config_file_path = pathlib.Path(r"flowcytometer_utils\cyz2json\cyz2json_python\config.txt") # be carefull if you have raw .cyz files in your directory you need to skip these!
+config_file_path = pathlib.Path(r"C:\Users\wout.decrop\Documents\environments\flowcytometer_utils_public\flowcytometer_utils\config.txt") # be carefull if you have raw .cyz files in your directory you need to skip these!
+
 
 # Path to python script to be used
 script_path_conversion = 'conversion_json.py'
@@ -40,12 +45,37 @@ def update_config(directory):
 for directory in directories:
     # Update the config file with the current directory
     update_config(directory)
-    print("runnning conversion")
+    print("runnning conversion: ",script_path_conversion)
+
+        # Get path to current env Python
+    python_executable = sys.executable
+
+    # Full path to conversion_json.py
+    script_path_conversion = os.path.join(os.path.dirname(__file__), "conversion_json.py")
+    script_path_extraction = os.path.join(os.path.dirname(__file__), "extraction_image.py")
+
+    # Run it using the correct Python
+    # result_conversion = subprocess.run(
+    #     [python_executable, script_path_conversion],
+    #     check=True,
+    #     capture_output=True,
+    #     text=True
+    # )
+    # print(result_conversion.stdout)
+
     # Run the convertion script
-    result_conversion = subprocess.run(['python', script_path_conversion], check=True, capture_output=True, text=True)
-    print("run extraction")
+    # result_conversion = subprocess.run(['python', script_path_conversion], check=True, capture_output=True, text=True)
+    print("run extraction :",script_path_extraction)
     # Run the extracting script
-    result_extraction = subprocess.run(['python', script_path_extraction], check=True, capture_output=True, text=True)
+        # Run it using the correct Python
+    result_extraction = subprocess.run(
+        [python_executable, script_path_extraction],
+        check=True,
+        capture_output=True,
+        text=True
+    )
+
+    # result_extraction = subprocess.run(['python', script_path_extraction], check=True, capture_output=True, text=True)
 
     # Print the output of the script
     print(f"Output for directory {directory}:")

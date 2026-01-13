@@ -5,7 +5,7 @@ import io
 import flowcytometer
 import re
 import datetime
-
+import urllib.parse
 
 class FlowcytometerOutput: 
     # INIT
@@ -38,8 +38,8 @@ class FlowcytometerOutput:
             self.collect_directory_name()
         self.find_sample_MIDAS()
         # Finally add some ease of use fields
-        self.add_any_metadata({"month": self.sample_metadata["sample_datetime"].month,
-                               "year": self.sample_metadata["sample_datetime"].year})
+        # self.add_any_metadata({"month": self.sample_metadata["sample_datetime"].month,
+        #                        "year": self.sample_metadata["sample_datetime"].year})
         print('Sample metadata updated!')
 
     def add_manual_metadata_VLIZ(self,
@@ -70,19 +70,39 @@ class FlowcytometerOutput:
         # Extract the JSON file name without the directory
         json_file_name = os.path.basename(self.json_file)
         # Regular expression to extract the required fields from the filename
-        match = re.match(r"(.*?)_(\d{8})_(\w+)_([\d]+)", json_file_name)
+        # match = re.match(r"(.*?)_(\d{8})_(\w+)_([\d]+)", json_file_name)
+        # if not match:
+        #     raise ValueError(f"Filename {json_file_name} does not match the expected pattern.")
+        # Remove extension
+        json_file_name_no_ext = json_file_name.replace(".cyz.json", "")
+
+        # Decode %20 -> space
+        json_file_name_decoded = urllib.parse.unquote(json_file_name_no_ext)
+
+        # Extract components
+        match = re.match(r"(.*?) (\d{4}-\d{2}-\d{2} \d{2}h\d{2})", json_file_name_decoded)
+
         if not match:
             raise ValueError(f"Filename {json_file_name} does not match the expected pattern.")
 
-        # Extract components
+        protocol = match.group(1)
+        sample_date_str = match.group(2)
+        station = None
+        replicate =  None
+        
+        # Convert sample_date_str to datetime
+        sample_datetime = datetime.datetime.strptime(sample_date_str, "%Y-%m-%d %Hh%M")
+        
         metadata = {
-            "protocol": match.group(1),
-            "sample_date": match.group(2),
-            "station": match.group(3),
-            "replicate": match.group(4),
+            "protocol": protocol,
+            "sample_date": sample_date_str,
+            "sample_datetime": sample_datetime,
+            "station": station,
+            "month": sample_datetime.month,
+            "year": sample_datetime.year
         }
-
         self.add_any_metadata(metadata)
+        return
 
 
     # Get metadata from MIDAS
@@ -108,11 +128,23 @@ class FlowcytometerOutput:
                                                                 self.sample_metadata["station"]))
 
     def calculate_processing_lag(self):
-        assert self.sample_metadata["sample_datetime"] and self.sample_metadata[
-            'fcm_datetime'], "Make sure Sample & lab processing datetime exist in sample_metadata!!"
+        sample_dt = self.sample_metadata.get("sample_datetime")
+        fcm_dt = self.sample_metadata.get("fcm_datetime")
 
-        lag = self.sample_metadata['fcm_datetime'] - self.sample_metadata["sample_datetime"]
+        if not sample_dt or not fcm_dt:
+            print("Warning: sample_datetime or fcm_datetime missing, processing lag not calculated")
+            return
+
+        # Make both naive
+        if fcm_dt.tzinfo:
+            fcm_dt = fcm_dt.replace(tzinfo=None)
+        if sample_dt.tzinfo:
+            sample_dt = sample_dt.replace(tzinfo=None)
+
+        lag = fcm_dt - sample_dt
         self.add_any_metadata({"processing_lag_s": int(lag.total_seconds())})
+
+
 
     def extract_parameters_json(self):
         # Extract info from json file
@@ -125,24 +157,26 @@ class FlowcytometerOutput:
         #pass info from sample_metdata
 
         print("calculating processing lag")
-        fcm_datetime = json_data["fcm_datetime"][0].to_pydatetime()
+        # print(json_data)
+        fcm_datetime = json_data["fcm_datetime"][0]  # already a datetime object
         self.add_any_metadata({'fcm_datetime': fcm_datetime})
         self.calculate_processing_lag()
-        #transfer between sample and processing dict so written to rigth csv file
+
+        # Transfer between sample and processing dict so written to the right CSV file
         json_data["fcm_datetime"] = fcm_datetime
         json_data["processing_lag_s"] = self.sample_metadata['processing_lag_s']
-        json_data["replicate"] = self.sample_metadata['replicate']
+        # json_data["replicate"] = self.sample_metadata['replicate']
         json_data["protocol"] = self.sample_metadata['protocol']
         json_data["flowcytometer_version"] = self.sample_metadata['flowcytometer_version']
 
-        # Save the DataFrame to the CSV file
+        # Save the DataFrame to CSV
         json_data.to_csv(excel_file_name_with_path, index=False)
         print('processing csv created!')
 
     def write_metadata_csv(self):
         df = pd.DataFrame([self.sample_metadata])
         # Select the columns you want and rearrange them (if needed)
-        required_columns = ['action_type', 'comments', 'sample_datetime', 'month', 'project', 'sample_date', 'station', 'latitude', 'longitude', 'tripactionid', 'year']  # list of columns you need
+        required_columns = [ 'comments', 'sample_datetime', 'month', 'project', 'sample_date', 'station', 'year']  # list of columns you need
         df = df[required_columns]  # Select only the required columns
         target_name_file = os.path.basename(self.json_file).replace(".cyz.json", "")
         sample_metadata_file_name = f"{target_name_file}_sample_metadata.csv"

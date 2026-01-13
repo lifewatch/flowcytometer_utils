@@ -6,7 +6,7 @@ import os
 
 # Read the paths from the config file
 config = {}
-with open('./cyz2json/cyz2json_python/config.txt', 'r') as file:
+with open(r'C:\Users\wout.decrop\Documents\environments\flowcytometer_utils_public\flowcytometer_utils\config.txt', 'r') as file:
     for line in file:
         # Skip empty lines and comments
         if line.strip() == '' or line.strip().startswith('#'):
@@ -40,9 +40,16 @@ for file in json_files:
     # Remove the `.cyz` pattern from the filename
     json_filename_cleaned = json_filename.replace('.cyz', '')
     # Define the directory where to save the images
-    output_directory = f'{file}_images'
-    # Create the output directory if it doesn't exist
-    Path(output_directory).mkdir(parents=True, exist_ok=True)
+
+    json_path = Path(file)
+    output_directory = json_path.with_name(json_path.stem + "_images")
+    output_directory.mkdir(parents=True, exist_ok=True)
+
+
+    
+    # output_directory = f'{file}_images'
+    # # Create the output directory if it doesn't exist
+    # Path(output_directory).mkdir(parents=True, exist_ok=True)
 
     # Remove any existing files in the output directory
     for old_file in Path(output_directory).glob('*'):

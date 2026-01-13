@@ -19,8 +19,206 @@ def query_sample_MIDAS(station, yyyymmdd):
 
 #### HANDELING JSON DATATYPE -> PROCESSING DATA####
 
+import json
+import re
+import pandas as pd
+from datetime import datetime
+import json
+import re
+import pandas as pd
+from datetime import datetime
 
-def read_json(json_file, separate_concentration_measurement="checked", flowcytometer_version="CytoSense", remote_file_server="Do nothing"):
+def flatten_dict(d, parent_key='', sep='_'):
+    """Recursively flatten a nested dictionary."""
+    items = {}
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.update(flatten_dict(v, new_key, sep=sep))
+        else:
+            items[new_key] = v
+    return items
+
+def read_json(json_file, separate_concentration_measurement="checked",
+              flowcytometer_version="CytoSense", remote_file_server="Do nothing"):
+    """
+    Parse a CytoSense .json file and extract particle metadata and instrument settings.
+    
+    :param json_file: Path to *.json file as obtained with extraction script
+    :param separate_concentration_measurement: Optional metadata flag
+    :param flowcytometer_version: Optional metadata flag
+    :param remote_file_server: Optional metadata flag
+    :return: (DataFrame, excel_file_name)
+    """
+    # Load JSON
+    with open(json_file, 'r', errors='ignore') as f:
+        data = json.load(f)
+    print("JSON loaded")
+
+    instr = data['instrument']
+    ms = instr.get('measurementSettings', {})
+    mr = instr.get('measurementResults', {})
+
+    # Base repeated metadata
+    repeated_data = {
+        "instrument_name": instr.get("name"),
+        "serial_number": instr.get("serialNumber"),
+        "sample_core_speed": instr.get("sampleCoreSpeed"),
+        "laser_beam_width": instr.get("laserBeamWidth"),
+        "flowcytometer_version": flowcytometer_version,
+        "remote_file_server": remote_file_server,
+        "separate_concentration_measurement": separate_concentration_measurement
+    }
+    flat_ms = flatten_dict(ms, parent_key='ms')
+    flat_mr = flatten_dict(mr, parent_key='mr')
+
+    # Flatten measurementSettings and measurementResults
+    repeated_data.update(dict(list(flat_ms.items())[:25]))
+    repeated_data.update(dict(list(flat_mr.items())[:25]))
+    # Parse start datetime
+    datetime_str = mr.get('start')
+    if datetime_str:
+        try:
+            parsed_datetime = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+            repeated_data["fcm_datetime"] = parsed_datetime.replace(microsecond=0)
+        except Exception as e:
+            print(f"Error parsing datetime: {e}")
+            repeated_data["fcm_datetime"] = None
+
+    # Extract channels
+    for ch in instr.get("channels", []):
+        repeated_data[f"channel_{ch['id']}_desc"] = ch.get("description")
+
+    # # Extract Cytoclus easy display
+    # cytoclus_mapping = {
+    #     "FWS_R": r"FWS R: (\d+)",
+    #     "FWS_L": r"FWS L: (\d+)",
+    #     "SWS": r"SWS: (\d+)",
+    #     "FL_Yellow": r"FL Yellow: (\d+)",
+    #     "FL_Orange": r"FL Orange: (\d+)",
+    #     "FL_Red": r"FL Red: (\d+)",
+    #     "FL_Red2": r"FL Red 2: (\d+)"
+    # }
+    # easy_display = ms.get("easy_display_cytoclus", "")
+    # for key, pattern in cytoclus_mapping.items():
+    #     match = re.search(pattern, easy_display)
+    #     repeated_data[key] = match.group(1) if match else None
+
+    # # SmartGrid
+    # smartgrid_mapping = {
+    #     "smartgrid_mode_SWS": "SWS",
+    #     "smartgrid_mode_FL_Yellow": "FL Yellow",
+    #     "smartgrid_mode_FL_Orange": "FL Orange",
+    #     "smartgrid_mode_FL_Red": "FL Red"
+    # }
+    # smartgrid_str = ms.get("SmartGrid_str", "")
+    # for key, val in smartgrid_mapping.items():
+    #     repeated_data[key] = val in smartgrid_str
+
+    # Prepare per-particle rows
+    rows = []
+    filename_without_extension = data.get('filename', '').replace(".cyz", "")
+    excel_file_name = f"{filename_without_extension}_sample_processing_data.csv"
+    repeated_data["excel_file_name"] = excel_file_name
+
+    for particle in data.get('images', []):
+        if particle.get('base64'):
+            unique_id = f"{filename_without_extension}_cropped_{particle['particleId']}.png"
+            row = {"file": unique_id, "particle_id": particle['particleId'], **repeated_data}
+            rows.append(row)
+
+    df = pd.DataFrame(rows)
+    return df, excel_file_name
+
+# def read_json(json_file, separate_concentration_measurement="checked",
+    #           flowcytometer_version="CytoSense", remote_file_server="Do nothing"):
+    # """
+    # Parse a CytoSense .json file and extract particle metadata and instrument settings.
+    
+    # :param json_file: Path to *.json file as obtained with extraction script
+    # :param separate_concentration_measurement: Optional metadata flag
+    # :param flowcytometer_version: Optional metadata flag
+    # :param remote_file_server: Optional metadata flag
+    # :return: (DataFrame, excel_file_name)
+    # """
+    # # Load JSON
+    # with open(json_file, 'r', errors='ignore') as f:
+    #     data = json.load(f)
+    # print("JSON loaded")
+
+    # instr = data['instrument']
+    # ms = instr['measurementSettings']
+    # mr = instr['measurementResults']
+
+    # # Repeated metadata
+    # repeated_data = {
+    #     "instrument_name": instr.get("name"),
+    #     "serial_number": instr.get("serialNumber"),
+    #     "sample_core_speed": instr.get("sampleCoreSpeed"),
+    #     "laser_beam_width": instr.get("laserBeamWidth"),
+    #     "flowcytometer_version": flowcytometer_version,
+    #     "remote_file_server": remote_file_server,
+    #     "separate_concentration_measurement": separate_concentration_measurement,
+    #     # Measurement settings
+    # }
+
+    # # Parse start datetime
+    # datetime_str = mr.get('start')
+    # if datetime_str:
+    #     # Some JSONs include fractional seconds and timezone
+    #     try:
+    #         parsed_datetime = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+    #         repeated_data["fcm_datetime"] = parsed_datetime.replace(microsecond=0)
+    #     except Exception as e:
+    #         print(f"Error parsing datetime: {e}")
+    #         repeated_data["fcm_datetime"] = None
+
+    # # Extract channels
+    # for ch in instr.get("channels", []):
+    #     repeated_data[f"channel_{ch['id']}_desc"] = ch.get("description")
+
+    # # Extract Cytoclus easy display
+    # cytoclus_mapping = {
+    #     "FWS_R": r"FWS R: (\d+)",
+    #     "FWS_L": r"FWS L: (\d+)",
+    #     "SWS": r"SWS: (\d+)",
+    #     "FL_Yellow": r"FL Yellow: (\d+)",
+    #     "FL_Orange": r"FL Orange: (\d+)",
+    #     "FL_Red": r"FL Red: (\d+)",
+    #     "FL_Red2": r"FL Red 2: (\d+)"
+    # }
+    # easy_display = ms.get("easy_display_cytoclus", "")
+    # for key, pattern in cytoclus_mapping.items():
+    #     match = re.search(pattern, easy_display)
+    #     repeated_data[key] = match.group(1) if match else None
+
+    # # SmartGrid
+    # smartgrid_mapping = {
+    #     "smartgrid_mode_SWS": "SWS",
+    #     "smartgrid_mode_FL_Yellow": "FL Yellow",
+    #     "smartgrid_mode_FL_Orange": "FL Orange",
+    #     "smartgrid_mode_FL_Red": "FL Red"
+    # }
+    # smartgrid_str = ms.get("SmartGrid_str", "")
+    # for key, val in smartgrid_mapping.items():
+    #     repeated_data[key] = val in smartgrid_str
+
+    # # Prepare per-particle rows
+    # rows = []
+    # filename_without_extension = data.get('filename', '').replace(".cyz", "")
+    # excel_file_name = f"{filename_without_extension}_sample_processing_data.csv"
+    # repeated_data["excel_file_name"] = excel_file_name
+
+    # for particle in data.get('crop_images', []):
+    #     if particle.get('base64'):
+    #         unique_id = f"{filename_without_extension}_cropped_{particle['particleId']}.png"
+    #         row = {"file": unique_id, "particle_id": particle['particleId'], **repeated_data}
+    #         rows.append(row)
+
+    # df = pd.DataFrame(rows)
+    # return df, excel_file_name
+
+# def read_json(json_file, separate_concentration_measurement="checked", flowcytometer_version="CytoSense", remote_file_server="Do nothing"):
     """
     :param json_file: *.json file as obtained with extraction script
     :param extra_data: dict, additional information to include in repeated data
@@ -142,7 +340,8 @@ def concat_csv(pathdir, out=None):
         if file.endswith('.csv') and "processing" not in file:
             csv_files.append(os.path.join(pathdir, file))
 
-
+    print(csv_files)
+    
     dataframes = []
     for file_path in csv_files:
         try:
