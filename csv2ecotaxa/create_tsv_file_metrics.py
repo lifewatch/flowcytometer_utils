@@ -6,11 +6,22 @@ from skimage.io import imread
 from skimage import measure, morphology
 from skimage.color import rgb2gray
 import numpy as np
-
+import pathlib
 
 
 # Define the base with cyz files (we need their name to find the csv files)
 base_path1 = r"location\to\folder"
+
+base_path1 = pathlib.Path(r"\\fs\SHARED\onderzoek\6. Marine Observation Center\Instruments\Plankton\FytoPlankton\CytoBuoy\Obsea_downloadsIFCS\2025_02\19") # be carefull if you have raw .cyz files in your directory you need to skip these!
+import os
+import pandas as pd
+import zipfile
+import shutil
+from skimage.io import imread
+from skimage import measure, morphology
+from skimage.color import rgb2gray
+import numpy as np
+
 
 def getImageRegionList(filename):
     # Read the image
@@ -111,6 +122,23 @@ def getMaxAreaDict(filename):
     return maxAreaDict
 
 
+# def getMaxAreaDict(filename):
+#     region_list = getImageRegionList(filename)
+#     if not region_list:
+#         return {'area': 0}
+#
+#     maxArea = max(region_list, key=lambda x: x.area)
+#     return {
+#         'label': maxArea.label,
+#         'centroid_row': maxArea.centroid[0],
+#         'centroid_col': maxArea.centroid[1],
+#         'diameter_equivalent': maxArea.equivalent_diameter,
+#         'length_minor_axis': maxArea.minor_axis_length,
+#         'length_major_axis': maxArea.major_axis_length,
+#         'eccentricity': maxArea.eccentricity,
+#         'area': maxArea.area
+#     }
+
 
 # Function to add image properties to the dataset
 def add_image_properties_to_data(data, image_folder):
@@ -146,6 +174,16 @@ def add_image_properties_to_data(data, image_folder):
     data = pd.concat([data, properties_df], axis=1)
 
     return data
+
+
+# Define the file path for the TSV file
+file_path = r"flowcytometer_utils\csv2ecotaxa\ecotaxa_zoopl_202205_130.tsv"
+
+# Load the TSV file into a DataFrame
+data = pd.read_csv(file_path, sep='\t')
+
+# Display the first few rows of the DataFrame
+print(data.head())
 
 
 
@@ -206,28 +244,44 @@ def open_additional_file(file_path):
 
     return data
 
+zip_file_path = rf"{base_path1}\output_to_ecotaxa"
 
+os.makedirs(zip_file_path, exist_ok=True)
 
+# Define the base path
+# base_path1 = r"\\qarchive\data_simonstevin\cyto\ANERIS\LW\04_2023"
 
-# Get all .cyz.json files in the folder
-cyz_json_files = [f for f in os.listdir(base_path1) if f.endswith('.cyz.json')]
+# Get all .cyz files in the folder
+cyz_files = [f for f in os.listdir(base_path1) if f.endswith('.cyz.json')]
 
 # Loop through each .cyz file
-for cyz_json_file in cyz_json_files:
+for cyz_file in cyz_files:
     # break
     # Extract the term from the .cyz file name (without the extension)
-    term =cyz_json_file.split(".")[0]
+    term =cyz_file.split(".")[0]
 
     # Define search terms based on the current term
     search_term1 = f"{term}_sample_processing_data"
     search_term2 = f"{term}_sample_metadata"
-    image_folder = rf"{base_path1}\{term}.cyz.json_images"
+    image_folder = rf"{base_path1}\{term}.cyz_images"
 
     # Open the first two files
     sample_processing_data, sample_metadata = open_files(base_path1, search_term1, search_term2)
+    cols = sample_processing_data.columns
+    sample_processing_data = sample_processing_data.rename(
+    columns={col: f"sample_{col}" for col in cols[2:-3]}
+    )
+
+    # # sample_processing_data = sample_processing_data.add_prefix("sample_")
+    # sample_processing_data.rename(
+    # columns={"sample_particle_id": "sample_id"},
+    # inplace=True
+    # )
+
 
     # Open the additional file directly
-    additional_file = rf"flowcytometer_utils\to_ecotaxa\Aneris_key.xlsx" 
+    additional_file = rf"flowcytometer_utils\csv2ecotaxa\Aneris_key.xlsx" #r"\\fs\shared\onderzoek\6. Marine Observation Center\Projects\ANERIS\transfer_to_ecotaxa\Aneris_key.xlsx"
+    renaming_key = open_additional_file(additional_file)
 
     # Add sample_metadata to every row in sample_processing_data
     sample_metadata_row = sample_metadata.iloc[0]  # Extract the first (and only) row of sample_metadata
@@ -257,6 +311,23 @@ for cyz_json_file in cyz_json_files:
     sample_processing_data_total_with_type['img_file_name'] = sample_processing_data_total_with_type[
         'img_file_name'].str.replace('.png', '.jpg')
 
+    sample_processing_data_total_with_type["img_file_name"] = (
+        sample_processing_data_total_with_type["img_file_name"]
+        .str.replace("_cropped", "_full", regex=False)
+    )
+    sample_processing_data_total_with_type["object_id"] = (
+        sample_processing_data_total_with_type["object_id"]
+        .str.replace("_cropped", "_full", regex=False)
+    )
+    sample_processing_data_total_with_type["sample_id"]=sample_processing_data_total_with_type["object_id"]
+    sample_processing_data_total_with_type["process_id"]=sample_processing_data_total_with_type["object_id"]
+    sample_processing_data_total_with_type = sample_processing_data_total_with_type.rename(
+        columns=lambda c: c.replace("sample_channel", "process_channel")
+    )
+
+# sample_processing_data_total_with_type["object_id"]
+
+
     # Add image properties to the dataset
     sample_processing_data_total_with_type = add_image_properties_to_data(sample_processing_data_total_with_type,
                                                                                 image_folder)
@@ -265,9 +336,24 @@ for cyz_json_file in cyz_json_files:
     sample_processing_data_total_with_type.iloc[0] = sample_processing_data_total_with_type.iloc[0].fillna('[f]')
 
 
+    # renaming_dict2 = {
+    #     'area': '[t]',
+    #     'perim.': '[f]',
+    #     'eccentricity': '[t]',
+    #     'orientation': '[t]',
+    #     'countcoords': '[t]'
+    # }
+    # # Replace the values in the first row based on the renaming_dict
+    # for col in sample_processing_data_total_with_type.columns:
+    #     if col in renaming_dict2:
+    #         sample_processing_data_total_with_type.at[0, col] = renaming_dict2[col]
+
+    # Show the updated DataFrame
+    # print(sample_processing_data_total_with_type.head())
+
     # Get all image files from the folder (assuming the images have a .jpg, .png, etc. extension)
     image_files = [f for f in os.listdir(image_folder) if f.lower().endswith(('jpg', 'jpeg', 'png', 'gif'))]
-    sample_processing_data_total_with_type.to_csv(rf"output.csv", index=False)
+    sample_processing_data_total_with_type.to_csv(rf"\\qarchive\data_simonstevin\cyto\ANERIS\LW\04_2023_output.csv", index=False)
 
     # Create a new directory to temporarily hold the files to be zipped
     temp_dir = rf"{base_path1}\TEMP_ZIP"
